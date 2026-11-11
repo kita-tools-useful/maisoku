@@ -1,0 +1,730 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>マイソク作成ツール</title>
+<style>
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{font-family:"Hiragino Kaku Gothic ProN","Yu Gothic","Meiryo",sans-serif;font-size:14px;color:#222;background:#e8e8e8}
+.tabs{display:none}
+.app{display:flex;gap:16px;padding:16px;height:100vh}
+.panel{width:420px;flex:none;background:#fff;border:1px solid #ccc;border-radius:0;padding:12px;overflow-y:auto}
+.preview{flex:1;min-width:0;min-height:0;overflow:auto}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:0 10px}
+.grid .full{grid-column:1/-1}
+h1{font-size:16px;margin:0 0 10px}
+h2{font-size:13px;margin:16px 0 6px;padding:4px 8px;background:#e6e6e6;border:1px solid #ccc}
+label{display:block;font-size:12px;color:#555;margin:6px 0 2px}
+input[type=text],select,textarea{width:100%;padding:6px 8px;font:inherit;font-size:14px;border:1px solid #bbb;border-radius:2px;background:#fff}
+textarea{resize:vertical}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:0 8px}
+.btns{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+button{font:inherit;font-size:13px;padding:7px 12px;border:1px solid #999;border-radius:2px;background:#f7f7f7;cursor:pointer}
+button.pri{background:#555;border-color:#444;color:#fff}
+a.bm{display:inline-block;font-size:13px;padding:7px 12px;border:1px dashed #555;border-radius:2px;background:#fffbe6;color:#000;text-decoration:none;cursor:grab}
+.note{font-size:11px;color:#777;margin:4px 0 0;line-height:1.5}
+.msg{font-size:12px;color:#333;margin-top:6px;min-height:1em}
+.imgrow{display:flex;align-items:center;gap:6px;margin-top:4px}
+.imgrow input{flex:1;min-width:0;font-size:12px}
+.imgrow input[type=text]{flex:none;width:120px}
+.imgctl{display:flex;flex-wrap:wrap;gap:4px 10px;align-items:center;margin:3px 0 10px;font-size:12px}
+.imgctl button{font-size:12px;padding:3px 8px;min-height:30px}
+.chk{display:flex;align-items:center;gap:6px;font-size:13px;color:#222;margin:6px 0}
+.chk input{width:18px;height:18px;flex:none}
+#warn{color:#b00;font-size:12px;font-weight:bold}
+#hint{color:#000;background:#ffe9a8;font-size:13px;font-weight:bold}
+#hint:not(:empty){padding:6px 8px;margin-bottom:4px}
+body.marking .slot{cursor:crosshair}
+.mark{position:absolute;width:9mm;height:9mm;margin:-4.5mm 0 0 -4.5mm;border:0.9mm solid #e00018;border-radius:50%;pointer-events:none}
+.mark span{position:absolute;left:50%;top:-5.4mm;transform:translateX(-50%);background:#e00018;color:#fff;font-size:8pt;font-weight:bold;padding:0 1.5mm;white-space:nowrap;line-height:1.5}
+.sheetWrap{position:relative;overflow:hidden;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.25)}
+.sheet{width:297mm;height:210mm;background:#fff;padding:7mm;display:flex;flex-direction:column;transform-origin:0 0;color:#000;overflow:hidden;font-family:"MS PGothic","Hiragino Kaku Gothic ProN","Yu Gothic","Meiryo",sans-serif}
+
+/* ---- 図面 ---- */
+.sheet{--ac:#000}
+.hd{display:flex;align-items:stretch;border:0.7mm solid var(--ac);min-height:23mm}
+.kind{flex:none;width:24mm;background:var(--ac);color:#fff;font-weight:bold;font-size:16pt;display:flex;align-items:center;justify-content:center;text-align:center;line-height:1.25;padding:1mm}
+.kind.sm{font-size:10.5pt}
+.hdL{flex:1;min-width:0;padding:1.8mm 4mm;display:flex;flex-direction:column;justify-content:center}
+.nm{font-size:19pt;font-weight:bold;line-height:1.2}
+.acc{font-size:11.5pt;font-weight:bold;margin-top:1mm;line-height:1.3}
+.loc{font-size:9.5pt;margin-top:.6mm;line-height:1.3}
+.hdR{flex:none;min-width:82mm;border-left:0.7mm solid var(--ac);display:flex}
+.plabel{flex:none;width:8mm;background:var(--ac);color:#fff;font-size:10pt;font-weight:bold;display:flex;align-items:center;justify-content:center;writing-mode:vertical-rl;letter-spacing:.3em}
+.price{flex:1;align-self:center;text-align:right;padding:0 4mm;color:#d2001a;font-weight:bold;font-size:16pt;white-space:nowrap;line-height:1}
+.price b{font-size:38pt;letter-spacing:-.02em}
+.catch{margin-top:2mm;background:#e8e8e8;border-left:2.5mm solid var(--ac);font-size:13pt;font-weight:bold;padding:1.3mm 3mm;line-height:1.3}
+.bd{flex:1;min-height:0;display:flex;gap:3mm;margin-top:2.5mm}
+.imgs{flex:1.5;min-width:0;display:flex;flex-direction:column;gap:2.5mm}
+.imain{flex:1.9;min-height:0}
+.isub{flex:1;min-height:0;display:flex;gap:2.5mm}
+.isub .slot{flex:1;min-width:0}
+.slot{position:relative;border:0.3mm solid #000;display:flex;align-items:center;justify-content:center;overflow:hidden;color:#bbb;font-size:10pt;height:100%}
+.slot img{width:100%;height:100%;object-fit:contain;display:block}
+.cap{position:absolute;left:0;top:0;background:var(--ac);color:#fff;font-size:8pt;font-weight:bold;padding:.5mm 2.5mm;letter-spacing:.1em}
+.info{flex:1;min-width:0;display:flex;flex-direction:column;overflow:hidden}
+.sec{background:var(--ac);color:#fff;font-size:9.5pt;font-weight:bold;padding:.7mm 2.5mm;letter-spacing:.25em}
+.sec.gap{margin-top:1.5mm}
+table.ov{width:100%;border-collapse:collapse;font-size:8.8pt;line-height:1.3}
+table.ov th,table.ov td{border:0.25mm solid #000;padding:.5mm 2mm;text-align:left;vertical-align:middle}
+table.ov th{width:28mm;white-space:nowrap;background:#ececec;font-weight:normal;text-align:justify;text-align-last:justify;padding-left:2.5mm;padding-right:2.5mm}
+.box{border:0.25mm solid #000;border-top:0;font-size:9pt;line-height:1.4;padding:.8mm 2mm;white-space:pre-wrap}
+.box.pt{font-weight:bold;font-size:9.5pt}
+.noteline{display:flex;justify-content:space-between;font-size:7pt;margin-top:1.2mm}
+.ft{margin-top:.8mm;border:0.7mm solid var(--ac);display:flex;min-height:25mm}
+.ftA{flex:1.35;min-width:0;padding:2mm 4mm;display:flex;flex-direction:column;justify-content:center}
+.cname{font-size:17pt;font-weight:bold;line-height:1.2}
+.csub{font-size:8.5pt;line-height:1.5}
+.ftB{flex:1;padding:2mm 4mm;border-left:0.3mm solid #000;display:flex;flex-direction:column;justify-content:center}
+.tel{font-size:21pt;font-weight:bold;white-space:nowrap;line-height:1.15}
+.tel small{font-size:9pt;margin-right:2mm}
+.ftC{flex:.85;padding:2mm 3mm;border-left:0.3mm solid #000;font-size:9pt;line-height:1.5;display:flex;flex-direction:column;justify-content:center;gap:1mm}
+.tt{display:inline-block;background:var(--ac);color:#fff;font-size:8pt;font-weight:bold;padding:.2mm 2mm;margin-right:2mm;min-width:16mm;text-align:center}
+
+@media (min-width:1000px) and (max-width:1250px){
+  .app{gap:10px;padding:10px}
+  .panel{width:350px}
+}
+@media (max-width:999px){
+  .tabs{display:flex;position:fixed;top:0;left:0;right:0;z-index:10;background:#fff;border-bottom:1px solid #bbb}
+  .tabs button{flex:1;border:0;border-radius:0;background:#f3f4f5;min-height:46px;font-size:15px}
+  .tabs button.on{background:#555;color:#fff}
+  .app{display:block;height:auto;padding:58px 10px 10px}
+  .panel{width:100%;overflow:visible}
+  .preview{overflow:visible}
+  body.v-form .preview{display:none}
+  body.v-prev .panel{display:none}
+}
+@media (pointer:coarse){
+  input[type=text],select,textarea{font-size:16px;min-height:42px}
+  button{min-height:42px;padding:9px 14px}
+}
+@page{size:A4 landscape;margin:0}
+@media print{
+  body{background:#fff}
+  .app{display:block;padding:0;height:auto}
+  .panel,.pvhead,.tabs,#warn,#hint{display:none!important}
+  .preview{display:block!important;overflow:visible}
+  .sheetWrap{box-shadow:none;width:auto!important;height:auto!important;overflow:visible}
+  .sheet{transform:none!important}
+  .slot.empty{color:transparent;border-color:transparent}
+  .slot.empty .cap{display:none}
+  *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+}
+</style>
+</head>
+<body class="v-form">
+<div class="tabs"><button id="tabForm" class="on">入力</button><button id="tabPrev">プレビュー</button></div>
+<div class="app">
+  <div class="panel">
+    <h1>マイソク作成ツール</h1>
+
+    <h2>1. ポータルから取り込み（任意）</h2>
+    <div class="msg" id="msg"></div>
+    <label>方法A（PC向け）ブックマークから1クリックで取り込む</label>
+    <div class="btns" style="margin-top:2px">
+      <a id="bmLink" class="bm" href="#">マイソク取込</a>
+      <button id="btnBmCopy">コードをコピー</button>
+    </div>
+    <p class="note">※左の「マイソク取込」をブックマークバーへドラッグして登録します（初回だけ）。あとはSUUMO・アットホームの物件ページを開いて、そのブックマークを押すと、このツールが開いて項目が入ります。<br>※登録は、公開後のアドレス（GitHub Pages）でこのツールを開いた状態で行ってください。ブックマークがこのページのアドレスを覚えます。</p>
+    <label>方法B　物件ページの文字を貼り付ける</label>
+    <textarea id="paste" rows="4" placeholder="物件ページで「すべて選択→コピー」して貼り付け。またはAIが書き出した「項目名：内容」を貼り付け"></textarea>
+    <div class="btns">
+      <button class="pri" id="btnParse">貼り付けから取り込む</button>
+    </div>
+    <label>方法C（スマホ・タブレット向け）スクショをAIに読ませる</label>
+    <div class="btns" style="margin-top:2px"><button id="btnPrompt">AI用の依頼文をコピー</button></div>
+    <p class="note">※物件概要のスクショと、コピーした依頼文をAI（Claudeなど）に送り、返ってきた文章を方法Bの欄に貼って取り込みます。</p>
+    <label>物件URL（控え用）</label>
+    <input type="text" id="url" placeholder="https://suumo.jp/... / https://www.athome.co.jp/...">
+    <div class="btns"><button id="btnOpen">URLを開く</button></div>
+    <p class="note">※ブラウザの制限で、URLを入れただけでは他サイトの内容は読めません。上のA〜Cのどれかで取り込みます。画像は下で個別に入れてください。</p>
+
+    <h2>2. 物件情報</h2>
+    <label>種別</label>
+    <select id="type">
+      <option>売地</option><option>新築戸建</option><option>中古戸建</option>
+      <option>新築マンション</option><option>中古マンション</option>
+      <option>一棟売マンション</option><option>一棟売アパート</option>
+      <option>事業用地</option><option>賃貸</option>
+    </select>
+    <label>キャッチコピー</label>
+    <input type="text" id="catch">
+    <div id="fields" class="grid"></div>
+    <label>おすすめポイント（1行に1つ）</label>
+    <textarea id="points" rows="3"></textarea>
+    <label>追加項目（1行に「項目名：内容」）</label>
+    <textarea id="extra" rows="2" placeholder="例）学区：〇〇小学校 徒歩8分"></textarea>
+
+    <h2>3. 画像</h2>
+    <label>まとめて選択（空いている枠に順に入ります。枠は全部で5つ）</label>
+    <input type="file" id="multi" accept="image/*" multiple>
+    <div id="imgInputs"></div>
+    <p class="note">※画像をコピーしてこの画面で貼り付け（Ctrl+V）しても、空いている枠に入ります。<br>※画像はページを閉じると消えます。残すときは「データ保存(JSON)」を使ってください（文字の入力内容は自動で残ります）。</p>
+
+    <h2>区画図を作る（売地向け・任意）</h2>
+    <div class="grid">
+      <div><label>間口（m）</label><input type="text" data-p="w" inputmode="decimal"></div>
+      <div><label>奥行（m）</label><input type="text" data-p="d" inputmode="decimal"></div>
+      <div><label>接道方位</label><select data-p="side"><option>南</option><option>北</option><option>東</option><option>西</option></select></div>
+      <div><label>道路幅員（m）</label><input type="text" data-p="rw" inputmode="decimal"></div>
+      <div><label>道路種別</label><input type="text" data-p="rk" placeholder="公道"></div>
+      <div><label>面積表示（空欄で自動）</label><input type="text" data-p="area"></div>
+    </div>
+    <div class="btns"><button id="btnPlot">区画図をメイン枠に入れる</button></div>
+    <p class="note">※長方形の概略図です（上が北）。地図のスクショを使う場合は不要です。</p>
+
+    <h2>4. 会社情報（帯）</h2>
+    <div id="company" class="grid"></div>
+    <p class="note">※会社情報はこのブラウザに保存され、「クリア」しても残ります。</p>
+
+    <h2>5. 出力</h2>
+    <div class="grid">
+      <div><label>帯・見出しの色</label><select id="color"><option value="#000">黒</option><option value="#1f3a6e">紺</option><option value="#1b6b3a">緑</option><option value="#a8001a">赤</option></select></div>
+      <div><label>図面作成日</label><input type="text" id="date" placeholder="例）2026年11月10日"></div>
+    </div>
+    <label class="chk"><input type="checkbox" id="auto">坪数・坪単価を自動で表示する（土地面積と価格から計算）</label>
+    <label class="chk"><input type="checkbox" id="noband">帯（会社情報）を空欄で出す</label>
+    <div class="btns">
+      <button class="pri" id="btnPrint">印刷 / PDF保存</button>
+      <button id="btnSave">データ保存(JSON)</button>
+      <button id="btnLoad">データ読込</button>
+      <button id="btnClear">クリア</button>
+    </div>
+    <input type="file" id="fileLoad" accept=".json,application/json" style="display:none">
+    <p class="note">※印刷は「A4・横・余白なし・背景のグラフィックあり」にしてください。</p>
+  </div>
+
+  <div class="preview">
+    <div class="pvhead note" style="margin:0 0 6px">プレビュー（A4横）</div>
+    <div id="hint"></div><div id="warn"></div>
+    <div class="sheetWrap" id="wrap"><div class="sheet" id="sheet"></div></div>
+  </div>
+</div>
+
+<script>
+/*PURE-START*/
+var FIELDS = [
+  {k:'name', l:'物件名', a:['物件名','マンション名','建物名']},
+  {k:'price', l:'価格', a:['販売価格','価格','賃料']},
+  {k:'addr', l:'所在地', a:['所在地','住所']},
+  {k:'access', l:'交通', a:['交通','沿線・駅','最寄駅','最寄り駅'], multi:true},
+  {k:'land', l:'土地面積', a:['土地面積','敷地面積']},
+  {k:'bldg', l:'建物面積', a:['建物面積','延床面積']},
+  {k:'senyu', l:'専有面積', a:['専有面積']},
+  {k:'madori', l:'間取り', a:['間取り','間取']},
+  {k:'built', l:'築年月', a:['築年月','完成時期(築年月)','完成時期（築年月）','築年数','完成時期']},
+  {k:'structure', l:'構造・階建', a:['構造・階建て','構造・階建','構造・工法','建物構造','構造']},
+  {k:'floor', l:'所在階', a:['所在階','階建/階','階']},
+  {k:'chimoku', l:'地目', a:['地目']},
+  {k:'toshi', l:'都市計画', a:['都市計画']},
+  {k:'youto', l:'用途地域', a:['用途地域']},
+  {k:'kenpei', l:'建ぺい・容積率', a:['建ぺい率・容積率','建ぺい率／容積率','建ぺい率/容積率','建蔽率・容積率','建蔽率／容積率']},
+  {k:'road', l:'接道状況', a:['接道状況','接道','私道負担・道路','道路']},
+  {k:'kenri', l:'土地権利', a:['土地の権利形態','土地権利','権利形態']},
+  {k:'jouken', l:'建築条件', a:['建築条件']},
+  {k:'setsubi', l:'設備', a:['設備','ライフライン']},
+  {k:'kanri', l:'管理費', a:['管理費','管理費等','共益費']},
+  {k:'shuzen', l:'修繕積立金', a:['修繕積立金']},
+  {k:'genkyo', l:'現況', a:['現況','土地状況']},
+  {k:'hikiwatashi', l:'引渡し', a:['引渡可能時期','引渡し','引渡時期','引渡','入居時期','入居']},
+  {k:'biko', l:'備考', a:['備考','その他制限事項'], area:true}
+];
+var COMPANY = [
+  {k:'cname', l:'商号'},{k:'license', l:'免許番号'},{k:'caddr', l:'会社住所'},
+  {k:'tel', l:'TEL', half:1},{k:'fax', l:'FAX', half:1},
+  {k:'torihiki', l:'取引態様', half:1},{k:'fee', l:'手数料', half:1},
+  {k:'assoc', l:'所属団体'},{k:'staff', l:'担当'}
+];
+var HEAD_KEYS = {name:1, price:1, addr:1, access:1, biko:1};
+
+function normLabel(s){
+  return String(s).replace(/[\s　]/g,'').replace(/ヒント$/,'').replace(/[:：]$/,'');
+}
+function cleanValue(s){
+  return String(s)
+    .replace(/[\[［][^\]］]*[\]］]/g,'')
+    .replace(/(地図を見る|周辺環境|乗り換え案内|支払シミュレーション|ローンシミュレーション|ヒント)/g,'')
+    .replace(/\s+/g,' ').replace(/^[／\s]+|[／\s]+$/g,'').trim();
+}
+function parseText(text){
+  var cells = [];
+  String(text).split(/\r?\n/).forEach(function(line){
+    line.split(/\t+/).forEach(function(c){
+      c = c.replace(/[\s　]+/g,' ').trim();
+      if(c) cells.push(c);
+    });
+  });
+  var known = {};
+  FIELDS.forEach(function(f){ f.a.concat([f.l]).forEach(function(a){ known[normLabel(a)] = 1; }); });
+  ['取引態様','情報提供日','次回更新予定日','会社概要','お問い合わせ','物件番号','総戸数','駐車場','敷金','礼金'].forEach(function(a){ known[a]=1; });
+  var out = {};
+  FIELDS.forEach(function(f){
+    var al = f.a.concat([f.l]);
+    for(var ai=0; ai<al.length && !out[f.k]; ai++){
+      var alias = normLabel(al[ai]);
+      for(var i=0; i<cells.length; i++){
+        var c = cells[i], val = '';
+        if(normLabel(c) === alias){
+          var vals = [];
+          for(var j=i+1; j<cells.length && j<i+6 && vals.length < (f.multi?3:1); j++){
+            if(known[normLabel(cells[j])]) break;
+            var v = cleanValue(cells[j]);
+            if(!v) continue;
+            if(f.multi && vals.length && !/(駅|バス|徒歩|分)/.test(v)) break;
+            vals.push(v);
+          }
+          val = vals.join('\n');
+        } else {
+          var m = c.match(/^(.{1,14}?)[:：]\s*(.+)$/);
+          if(m && normLabel(m[1]) === alias) val = cleanValue(m[2]);
+        }
+        if(val && !/^[-－―ー—‐\s]+$/.test(val)){ out[f.k] = val; break; }
+      }
+    }
+  });
+  return out;
+}
+function guessType(text, cur){
+  if(/賃料|敷金|礼金/.test(text)) return '賃貸';
+  if(/専有面積/.test(text)) return /新築/.test(text) && !/中古/.test(text) ? '新築マンション' : '中古マンション';
+  if(/建物面積/.test(text)) return /新築/.test(text) && !/中古/.test(text) ? '新築戸建' : '中古戸建';
+  if(/土地面積/.test(text)) return '売地';
+  return cur;
+}
+function esc(s){
+  return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function nl2br(s){ return esc(s).replace(/\n/g,'<br>'); }
+function priceHtml(s){
+  return esc(s).replace(/[\d,\.]+/g, function(m){ return '<b>'+m+'</b>'; });
+}
+function m2Of(land){
+  var m = String(land||'').match(/([\d,]+(?:\.\d+)?)\s*(?:㎡|m2|m²|ｍ２|ｍ2|平米)/);
+  return m ? parseFloat(m[1].replace(/,/g,'')) : 0;
+}
+function tsuboText(land){
+  var t = String(land||''), v = m2Of(t);
+  if(!v || /坪/.test(t)) return t;
+  return t+'（約'+(v*0.3025).toFixed(2)+'坪）';
+}
+function manOf(price){
+  var t = String(price||'').replace(/[,\s　]/g,'');
+  if(/[～〜~\-ー・]/.test(t)) return 0;
+  var m = t.match(/^(?:(\d+(?:\.\d+)?)億)?(?:(\d+(?:\.\d+)?)万)?円/);
+  if(!m || (!m[1] && !m[2])) return 0;
+  return parseFloat(m[1]||0)*10000 + parseFloat(m[2]||0);
+}
+function imgRect(d, cover, sw, sh){
+  if(!d || !d.w || !d.h) return {x:0, y:0, w:sw, h:sh};
+  var sc = cover ? Math.max(sw/d.w, sh/d.h) : Math.min(sw/d.w, sh/d.h);
+  return {x:(sw-d.w*sc)/2, y:(sh-d.h*sc)/2, w:d.w*sc, h:d.h*sc};
+}
+function plotSvg(p){
+  p = p || {};
+  var w = parseFloat(p.w), d = parseFloat(p.d);
+  if(!(w > 0 && d > 0)) return '';
+  var side = p.side || '南', hz = (side === '南' || side === '北');
+  var lw = hz ? w : d, lh = hz ? d : w;
+  var sc = Math.min(400/lw, 270/lh);
+  var W = lw*sc, H = lh*sc, x = (600-W)/2, y = (450-H)/2;
+  var rw = parseFloat(p.rw);
+  var rt = Math.max(30, Math.min(70, (rw > 0 ? rw : 6)*sc));
+  if(side === '南') y -= rt/2; if(side === '北') y += rt/2;
+  if(side === '東') x -= rt/2; if(side === '西') x += rt/2;
+  var rx, ry, rW, rH;
+  if(hz){ rx = x-45; rW = W+90; rH = rt; ry = side === '南' ? y+H : y-rt; }
+  else { ry = y-45; rH = H+90; rW = rt; rx = side === '東' ? x+W : x-rt; }
+  var rl = side+'側 '+(p.rk || '道路')+(rw > 0 ? ' 幅員'+rw+'m' : '');
+  var areaL = p.area ? [String(p.area)] : [(w*d).toFixed(2)+'㎡', '（約'+(w*d*0.3025).toFixed(2)+'坪）'];
+  var cx = x+W/2, cy = y+H/2, t = '';
+  function tx(s, px, py, size, rot, bold){
+    return '<text x="'+px.toFixed(1)+'" y="'+py.toFixed(1)+'" font-size="'+size+'" text-anchor="middle" dominant-baseline="middle"'+(bold?' font-weight="bold"':'')+(rot?' transform="rotate('+rot+' '+px.toFixed(1)+' '+py.toFixed(1)+')"':'')+'>'+esc(s)+'</text>';
+  }
+  t += '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 450" font-family="sans-serif" fill="#111">';
+  t += '<rect width="600" height="450" fill="#fff"/>';
+  t += '<rect x="'+rx.toFixed(1)+'" y="'+ry.toFixed(1)+'" width="'+rW.toFixed(1)+'" height="'+rH.toFixed(1)+'" fill="#dcdcdc"/>';
+  t += tx(rl, rx+rW/2, ry+rH/2, 15, hz ? 0 : 90);
+  t += '<rect x="'+x.toFixed(1)+'" y="'+y.toFixed(1)+'" width="'+W.toFixed(1)+'" height="'+H.toFixed(1)+'" fill="#fff" stroke="#111" stroke-width="2.5"/>';
+  var maxLen = Math.max.apply(null, areaL.map(function(v){ return v.length; }));
+  var fs = Math.max(9, Math.min(15, (W-14)/(maxLen*0.95)));
+  var ts = Math.max(11, Math.min(20, (W-14)/3.2));
+  t += tx('対象地', cx, cy-ts*0.9, ts.toFixed(1), 0, true);
+  areaL.forEach(function(v, i){ t += tx(v, cx, cy+6+i*(fs+4), fs.toFixed(1)); });
+  var fw = w.toFixed(2)+'m', fd = d.toFixed(2)+'m';
+  if(hz){
+    t += tx(fw, cx, side === '南' ? y-14 : y+H+16, 16);
+    t += tx(fd, x-16, cy, 16, -90);
+  } else {
+    t += tx(fw, side === '東' ? x-16 : x+W+16, cy, 16, -90);
+    t += tx(fd, cx, y-14, 16);
+  }
+  t += '<g transform="translate(552,52)"><path d="M0,-28 L9,6 L0,0 L-9,6 Z"/><line x1="0" y1="0" x2="0" y2="22" stroke="#111" stroke-width="2"/><text x="0" y="-36" font-size="14" text-anchor="middle">N</text></g>';
+  t += '<text x="10" y="440" font-size="11" fill="#555">※概略図（現況優先）</text></svg>';
+  return t;
+}
+function bmCode(T){
+  var o = [], seen = {};
+  function c(x){ return (x.innerText || x.textContent || '').split(/\n+/).map(function(v){ return v.replace(/\s+/g,' ').replace(/^\s+|\s+$/g,''); }).filter(Boolean); }
+  function add(k, v){
+    var l = c(k)[0], w = c(v).join(' ／ ');
+    if(l && w && l.length < 25 && !seen[l]){ seen[l] = 1; o.push(l + '\t' + w.slice(0, 300)); }
+  }
+  function pairs(a, b){
+    [].forEach.call(document.querySelectorAll(a), function(h){
+      var d = h.nextElementSibling;
+      if(d && d.tagName === b) add(h, d);
+    });
+  }
+  pairs('th', 'TD'); pairs('dt', 'DD');
+  var h1 = document.querySelector('h1');
+  if(h1 && c(h1).length) o.push('物件名\t' + c(h1).join(' '));
+  if(o.length < 4) o = [(document.body.innerText || '').slice(0, 6000)];
+  o.unshift('URL\t' + location.href);
+  var u = T + '#import=' + encodeURIComponent(o.join('\n').slice(0, 8000));
+  var w = window.open(u, '_blank');
+  if(!w) location.href = u;
+}
+function aiPrompt(){
+  return '添付した不動産ポータルサイトの物件ページのスクリーンショットから、物件概要を読み取ってください。\n'
+    + '次の形式で、1行に1項目、「項目名：内容」だけを出力してください。前置きや説明、記号は不要です。\n'
+    + '・画像に書かれていない項目は出力しない。推測で埋めない。\n'
+    + '・数字と単位は画像のとおりに書く。\n'
+    + '・交通が複数あるときは「 ／ 」で区切って1行にまとめる。\n'
+    + '・項目名は次の中から選ぶ：' + FIELDS.map(function(f){ return f.l; }).join('、');
+}
+/*PURE-END*/
+
+var IMG_SLOTS = [{k:'main', l:'メイン（間取り図・区画図）'},{k:'sub1', l:'サブ1（外観・現地）'},{k:'sub2', l:'サブ2（地図・その他）'},{k:'sub3', l:'サブ3'},{k:'sub4', l:'サブ4'}];
+var S = {type:'売地', url:'', catch:'', points:'', extra:'', imgs:{}, plot:{}};
+var C = {};
+var markMode = null;
+function norm(){
+  ['imgs','plot','caps','fit','marks','dims'].forEach(function(k){ if(!S[k] || typeof S[k] !== 'object') S[k] = {}; });
+}
+function $(id){ return document.getElementById(id); }
+function store(key, val){ try{ localStorage.setItem(key, JSON.stringify(val)); }catch(e){} }
+function load(key){ try{ return JSON.parse(localStorage.getItem(key) || 'null'); }catch(e){ return null; } }
+
+function buildForm(){
+  var h = '';
+  FIELDS.forEach(function(f){
+    var wide = f.multi || f.area || f.k === 'name' || f.k === 'addr';
+    h += '<div'+(wide?' class="full"':'')+'><label>'+f.l+'</label>';
+    h += (f.multi||f.area) ? '<textarea rows="2" data-k="'+f.k+'"></textarea>' : '<input type="text" data-k="'+f.k+'">';
+    h += '</div>';
+  });
+  $('fields').innerHTML = h;
+  h = '';
+  COMPANY.forEach(function(f){
+    h += '<div'+(f.half?'':' class="full"')+'><label>'+f.l+'</label><input type="text" data-c="'+f.k+'"></div>';
+  });
+  $('company').innerHTML = h;
+  h = '';
+  IMG_SLOTS.forEach(function(s){
+    h += '<label>'+s.l+'</label><div class="imgrow"><input type="file" accept="image/*" data-img="'+s.k+'"><input type="text" data-cap="'+s.k+'" placeholder="見出し"><button data-del="'+s.k+'">削除</button></div>';
+    h += '<div class="imgctl">'+(s.k !== 'main' ? '<button data-tomain="'+s.k+'">メインと入替</button>' : '')
+      + '<label class="chk" style="margin:0"><input type="checkbox" data-fit="'+s.k+'">枠いっぱい（はみ出しは切る）</label>'
+      + '<button data-mark="'+s.k+'">現地マーク</button><button data-unmark="'+s.k+'">マーク削除</button></div>';
+  });
+  $('imgInputs').innerHTML = h;
+}
+function fillForm(){
+  ['type','url','catch','points','extra','color','date'].forEach(function(k){ $(k).value = S[k] || (k==='type'?'売地':k==='color'?'#000':''); });
+  norm();
+  $('auto').checked = S.auto !== false; $('noband').checked = !!S.noband;
+  document.querySelectorAll('[data-fit]').forEach(function(el){ el.checked = !!S.fit[el.dataset.fit]; });
+  document.querySelectorAll('[data-cap]').forEach(function(el){ el.value = S.caps[el.dataset.cap] || ''; });
+  document.querySelectorAll('[data-k]').forEach(function(el){ el.value = S[el.dataset.k] || ''; });
+  document.querySelectorAll('[data-c]').forEach(function(el){ el.value = C[el.dataset.c] || ''; });
+  document.querySelectorAll('[data-p]').forEach(function(el){ el.value = S.plot[el.dataset.p] || (el.dataset.p === 'side' ? '南' : ''); });
+}
+function saveDraft(){
+  var d = {}; for(var k in S){ if(k !== 'imgs') d[k] = S[k]; }
+  store('maisoku_draft', d); store('maisoku_company', C);
+}
+function capOf(k){
+  if(S.caps && S.caps[k]) return S.caps[k];
+  if(k === 'main') return /地/.test(S.type) ? '区画図' : '間取り図';
+  return k === 'sub1' ? '現地写真' : k === 'sub2' ? '案内図' : '写真';
+}
+function slotHtml(k){
+  var cap = '<span class="cap">'+esc(capOf(k))+'</span>';
+  return S.imgs[k] ? '<div class="slot" data-slot="'+k+'"><img src="'+esc(S.imgs[k])+'" alt=""'+(S.fit[k] ? ' style="object-fit:cover"' : '')+'>'+cap+'</div>' : '<div class="slot empty">'+cap+'画像</div>';
+}
+function placeMarks(){
+  document.querySelectorAll('#sheet .slot[data-slot]').forEach(function(el){
+    var k = el.dataset.slot, m = S.marks[k];
+    if(!m) return;
+    var r = imgRect(S.dims[k], S.fit[k], el.clientWidth, el.clientHeight);
+    var d = document.createElement('div');
+    d.className = 'mark'; d.innerHTML = '<span>現地</span>';
+    d.style.left = (r.x + m.u*r.w)+'px'; d.style.top = (r.y + m.v*r.h)+'px';
+    el.appendChild(d);
+  });
+}
+function render(){
+  var rows = '';
+  FIELDS.forEach(function(f){
+    if(HEAD_KEYS[f.k] || !S[f.k]) return;
+    rows += '<tr><th>'+f.l+'</th><td>'+nl2br(f.k === 'land' && S.auto !== false ? tsuboText(S[f.k]) : S[f.k])+'</td></tr>';
+  });
+  var kind = S.type || '売地';
+  if(S.auto !== false && /地/.test(kind) && !/坪単価/.test(S.extra||'')){
+    var man = manOf(S.price), m2 = m2Of(S.land);
+    if(man && m2) rows += '<tr><th>坪単価</th><td>約'+(man/(m2*0.3025)).toFixed(1)+'万円</td></tr>';
+  }
+  (S.extra||'').split(/\n/).forEach(function(line){
+    var m = line.match(/^(.+?)[:：]\s*(.+)$/);
+    if(m) rows += '<tr><th>'+esc(m[1])+'</th><td>'+esc(m[2])+'</td></tr>';
+  });
+  if(S.addr) rows = '<tr><th>所在地</th><td>'+esc(S.addr)+'</td></tr>' + rows;
+  var pts = (S.points||'').split(/\n/).filter(function(x){ return x.trim(); });
+  var subs = IMG_SLOTS.filter(function(x){ return x.k !== 'main' && S.imgs[x.k]; }).map(function(x){ return x.k; });
+  $('sheet').style.setProperty('--ac', S.color || '#000');
+  var h = '';
+  h += '<div class="hd"><div class="kind'+(kind.length > 3 ? ' sm' : '')+'">'+esc(kind)+'</div>';
+  h += '<div class="hdL"><div class="nm">'+esc(S.name||'物件名')+'</div>';
+  if(S.access) h += '<div class="acc">'+esc(S.access).replace(/\n/g,' ／ ')+'</div>';
+  if(S.addr) h += '<div class="loc">'+esc(S.addr)+'</div>';
+  h += '</div><div class="hdR"><div class="plabel">'+(kind==='賃貸'?'賃料':'価格')+'</div><div class="price">'+(S.price?priceHtml(S.price):'―')+'</div></div></div>';
+  if(S.catch) h += '<div class="catch">'+esc(S.catch)+'</div>';
+  h += '<div class="bd"><div class="imgs"><div class="imain">'+slotHtml('main')+'</div>';
+  if(!subs.length && !S.imgs.main) subs = ['sub1','sub2'];
+  if(subs.length) h += '<div class="isub">'+subs.map(slotHtml).join('')+'</div>';
+  h += '</div><div class="info">';
+  if(rows) h += '<div class="sec">物件概要</div><table class="ov">'+rows+'</table>';
+  if(pts.length) h += '<div class="sec gap">おすすめポイント</div><div class="box pt">'+pts.map(function(p){ return '●'+esc(p.trim()); }).join('\n')+'</div>';
+  if(S.biko) h += '<div class="sec gap">備考</div><div class="box">'+esc(S.biko)+'</div>';
+  h += '</div></div>';
+  h += '<div class="noteline"><span>※図面と現況が相違する場合は現況を優先します。</span><span>'+(S.date ? '図面作成日：'+esc(S.date) : '')+'</span></div>';
+  var sub = [];
+  if(C.license || C.assoc) sub.push(esc([C.license, C.assoc].filter(Boolean).join('　')));
+  if(C.caddr) sub.push(esc(C.caddr));
+  if(S.noband) h += '<div class="ft"></div>';
+  else {
+  h += '<div class="ft"><div class="ftA"><div class="cname">'+esc(C.cname||'（商号）')+'</div><div class="csub">'+sub.join('<br>')+'</div></div>';
+  h += '<div class="ftB"><div class="tel"><small>TEL</small>'+esc(C.tel||'')+'</div>'+(C.fax?'<div class="csub">FAX '+esc(C.fax)+'</div>':'')+'</div>';
+  h += '<div class="ftC">'+(C.torihiki?'<div><span class="tt">取引態様</span>'+esc(C.torihiki)+'</div>':'')+(C.fee?'<div><span class="tt">手数料</span>'+esc(C.fee)+'</div>':'')+(C.staff?'<div><span class="tt">担当</span>'+esc(C.staff)+'</div>':'');
+  h += '</div></div>';
+  }
+  $('sheet').innerHTML = h;
+  placeMarks();
+  fit();
+}
+function setView(v){
+  document.body.classList.remove('v-prev', 'v-form');
+  document.body.classList.add(v === 'prev' ? 'v-prev' : 'v-form');
+  $('tabForm').className = v === 'prev' ? '' : 'on';
+  $('tabPrev').className = v === 'prev' ? 'on' : '';
+  window.scrollTo(0, 0); fit();
+}
+function fit(){
+  var wrap = $('wrap'), sheet = $('sheet'), pv = wrap.parentNode;
+  if(!pv.clientWidth) return;
+  var info = sheet.querySelector('.info');
+  $('warn').textContent = (info && info.scrollHeight > info.clientHeight + 2) ? '⚠ 右側の物件概要が枠に収まっていません（下が切れます）。項目や文章を減らしてください。' : '';
+  var w = sheet.offsetWidth || 1123, hgt = sheet.offsetHeight || 794;
+  var sc = Math.min(1, pv.clientWidth / w);
+  if(window.innerWidth >= 1000){
+    var availH = pv.clientHeight - 30;
+    if(availH > 200) sc = Math.min(sc, availH / hgt);
+  }
+  sheet.style.transform = 'scale('+sc+')';
+  wrap.style.width = (w*sc)+'px'; wrap.style.height = (hgt*sc)+'px';
+}
+function setImage(k, file){
+  if(!file) return;
+  var r = new FileReader();
+  r.onload = function(){
+    var im = new Image();
+    im.onload = function(){
+      S.imgs[k] = r.result; S.dims[k] = {w:im.naturalWidth, h:im.naturalHeight}; delete S.marks[k];
+      saveDraft(); render();
+    };
+    im.onerror = function(){ alert('画像として読み込めませんでした。'); };
+    im.src = r.result;
+  };
+  r.readAsDataURL(file);
+}
+function copyText(t, okMsg){
+  function done(){ $('msg').textContent = okMsg; }
+  function fallback(){
+    var ta = document.createElement('textarea');
+    ta.value = t; ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select();
+    var ok = false; try{ ok = document.execCommand('copy'); }catch(e){}
+    ta.remove();
+    if(ok) done(); else prompt('コピーできませんでした。下の文字を選んでコピーしてください。', t);
+  }
+  if(navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(t).then(done, fallback);
+  else fallback();
+}
+function resetProperty(){
+  S = {type:'売地', url:'', catch:'', points:'', extra:'', imgs:{}, plot:{}, color:S.color, auto:S.auto, noband:S.noband};
+  norm(); markMode = null; document.body.classList.remove('marking'); $('hint').textContent = '';
+  document.querySelectorAll('[data-img]').forEach(function(el){ el.value = ''; });
+}
+function importText(t, from){
+  var r = parseText(t), n = 0, k;
+  for(k in r) n++;
+  if(!n){ $('msg').textContent = '項目を読み取れませんでした。手入力してください。'; return 0; }
+  if(S.name && r.name && S.name !== r.name && confirm('別の物件の入力が残っています。前の物件の入力と画像を消してから取り込みますか？\n「キャンセル」を押すと、今の入力に上書きします。')) resetProperty();
+  for(k in r) S[k] = r[k];
+  var u = String(t).match(/^URL\t(https?:\/\/\S+)/m);
+  if(u) S.url = u[1];
+  S.type = guessType(t, S.type);
+  fillForm(); saveDraft(); render();
+  $('msg').textContent = from + n + '項目を取り込みました。内容を確認・修正してください。';
+  return n;
+}
+function init(){
+  buildForm();
+  var d = load('maisoku_draft'); if(d){ for(var k in d) S[k] = d[k]; }
+  C = load('maisoku_company') || {};
+  norm(); S.imgs = {}; S.marks = {}; S.dims = {};
+  fillForm(); render();
+
+  document.querySelector('.panel').addEventListener('input', function(e){
+    var el = e.target;
+    if(el.dataset.k) S[el.dataset.k] = el.value;
+    else if(el.dataset.c) C[el.dataset.c] = el.value;
+    else if(el.dataset.p){ S.plot[el.dataset.p] = el.value; saveDraft(); return; }
+    else if(el.dataset.cap){ S.caps[el.dataset.cap] = el.value; }
+    else if(el.dataset.fit){ S.fit[el.dataset.fit] = el.checked; }
+    else if(el.id === 'auto' || el.id === 'noband'){ S[el.id] = el.checked; }
+    else if(['type','url','catch','points','extra','color','date'].indexOf(el.id) >= 0) S[el.id] = el.value;
+    else return;
+    saveDraft(); render();
+  });
+  document.querySelector('.panel').addEventListener('change', function(e){
+    if(e.target.dataset.img) setImage(e.target.dataset.img, e.target.files[0]);
+  });
+  document.querySelector('.panel').addEventListener('click', function(e){
+    var ds = e.target.dataset, k = ds.del;
+    if(k){ delete S.imgs[k]; delete S.marks[k]; delete S.dims[k]; var inp = document.querySelector('[data-img="'+k+'"]'); if(inp) inp.value = ''; saveDraft(); render(); return; }
+    if(ds.tomain){
+      k = ds.tomain;
+      if(!S.imgs[k]){ alert('この枠に画像がありません。'); return; }
+      ['imgs','marks','dims','fit'].forEach(function(g){
+        var a = S[g][k], b = S[g].main;
+        if(b === undefined) delete S[g][k]; else S[g][k] = b;
+        if(a === undefined) delete S[g].main; else S[g].main = a;
+      });
+      fillForm(); saveDraft(); render(); return;
+    }
+    if(ds.mark){
+      if(!S.imgs[ds.mark]){ alert('先にこの枠へ画像を入れてください。'); return; }
+      markMode = ds.mark; document.body.classList.add('marking');
+      $('hint').textContent = 'プレビューの「'+capOf(markMode)+'」の画像上で、物件の位置を押してください。';
+      if(window.innerWidth < 1000) setView('prev');
+      return;
+    }
+    if(ds.unmark){ delete S.marks[ds.unmark]; saveDraft(); render(); }
+  });
+  $('sheet').addEventListener('click', function(e){
+    if(!markMode) return;
+    var el = e.target.closest ? e.target.closest('.slot') : null;
+    if(!el || el.dataset.slot !== markMode) return;
+    var b = el.getBoundingClientRect();
+    var r = imgRect(S.dims[markMode], S.fit[markMode], el.clientWidth, el.clientHeight);
+    var px = (e.clientX - b.left) / b.width * el.clientWidth, py = (e.clientY - b.top) / b.height * el.clientHeight;
+    S.marks[markMode] = {u: Math.max(0, Math.min(1, (px - r.x)/r.w)), v: Math.max(0, Math.min(1, (py - r.y)/r.h))};
+    markMode = null; document.body.classList.remove('marking'); $('hint').textContent = '';
+    saveDraft(); render();
+  });
+  $('btnParse').onclick = function(){
+    var t = $('paste').value;
+    if(!t.trim()){ $('msg').textContent = '貼り付け欄が空です。'; return; }
+    importText(t, '');
+  };
+  var bm = 'javascript:' + encodeURIComponent('(' + bmCode.toString() + ')(' + JSON.stringify(location.href.split('#')[0]) + ')');
+  $('bmLink').href = bm;
+  $('bmLink').onclick = function(e){ e.preventDefault(); alert('ここでは押さずに、ブックマークバーへドラッグして登録してください。\n登録後、SUUMO・アットホームの物件ページを開いた状態で、そのブックマークを押します。'); };
+  $('btnBmCopy').onclick = function(){ copyText(bm, 'ブックマーク用のコードをコピーしました。ブックマークのURL欄に貼り付けてください。'); };
+  $('btnPrompt').onclick = function(){ copyText(aiPrompt(), 'AI用の依頼文をコピーしました。スクショと一緒にAIへ送ってください。'); };
+  var hm = location.hash.match(/^#import=(.*)$/);
+  if(hm){
+    try{
+      var txt = decodeURIComponent(hm[1]);
+      $('paste').value = txt; importText(txt, 'ブックマークから');
+    }catch(err){ $('msg').textContent = '取り込みデータを読めませんでした。'; }
+    try{ history.replaceState(null, '', location.pathname + location.search); }catch(err2){}
+  }
+  $('multi').onchange = function(e){
+    var files = Array.prototype.slice.call(e.target.files);
+    var free = IMG_SLOTS.filter(function(x){ return !S.imgs[x.k]; });
+    files.slice(0, free.length).forEach(function(f, i){ setImage(free[i].k, f); });
+    if(files.length > free.length) alert('枠が足りないため、'+free.length+'枚だけ入れました。');
+    e.target.value = '';
+  };
+  $('tabForm').onclick = function(){ setView('form'); };
+  $('tabPrev').onclick = function(){ setView('prev'); };
+  $('btnPlot').onclick = function(){
+    var svg = plotSvg(S.plot);
+    if(!svg){ alert('間口と奥行を数字で入れてください。'); return; }
+    if(S.imgs.main && S.imgs.main.indexOf('data:image/svg+xml') !== 0 && !confirm('メイン枠の画像を区画図に置き換えます。よろしいですか？')) return;
+    S.imgs.main = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+    S.dims.main = {w:600, h:450}; delete S.marks.main; S.fit.main = false;
+    fillForm(); saveDraft(); render();
+  };
+  $('btnOpen').onclick = function(){
+    var u = $('url').value.trim();
+    if(/^https?:\/\//.test(u)) window.open(u, '_blank', 'noopener');
+    else $('msg').textContent = 'URL欄に https:// から始まるURLを入れてください。';
+  };
+  $('btnPrint').onclick = function(){
+    var t = document.title;
+    if(S.name) document.title = S.name;
+    window.print();
+    setTimeout(function(){ document.title = t; }, 1000);
+  };
+  $('btnSave').onclick = function(){
+    var blob = new Blob([JSON.stringify({S:S, C:C})], {type:'application/json'});
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = (S.name || 'maisoku') + '.json';
+    document.body.appendChild(a); a.click(); a.remove();
+  };
+  $('btnLoad').onclick = function(){ $('fileLoad').click(); };
+  $('fileLoad').onchange = function(e){
+    var f = e.target.files[0]; if(!f) return;
+    var r = new FileReader();
+    r.onload = function(){
+      try{
+        var d = JSON.parse(r.result);
+        if(!d || typeof d.S !== 'object' || !d.S) throw new Error('format');
+        S = d.S;
+        if(d.C && typeof d.C === 'object'){
+          var same = JSON.stringify(d.C) === JSON.stringify(C);
+          if(!C.cname || same || confirm('会社情報（帯）も、読み込んだデータの内容に置き換えますか？\n「キャンセル」で今の会社情報のままにします。')) C = d.C;
+        }
+        norm();
+        fillForm(); saveDraft(); render();
+      }catch(err){ alert('読み込めませんでした。このツールで保存したJSONファイルを選んでください。'); }
+    };
+    r.readAsText(f); e.target.value = '';
+  };
+  $('btnClear').onclick = function(){
+    if(!confirm('物件情報と画像を消します（会社情報と出力の設定は残ります）。よろしいですか？')) return;
+    resetProperty();
+    $('paste').value = ''; $('msg').textContent = '';
+    fillForm(); saveDraft(); render();
+  };
+  document.addEventListener('paste', function(e){
+    var items = (e.clipboardData && e.clipboardData.items) || [];
+    for(var i=0; i<items.length; i++){
+      if(items[i].type.indexOf('image') === 0){
+        var slot = IMG_SLOTS.filter(function(s){ return !S.imgs[s.k]; })[0] || IMG_SLOTS[0];
+        setImage(slot.k, items[i].getAsFile()); e.preventDefault(); return;
+      }
+    }
+  });
+  window.addEventListener('resize', fit);
+}
+if(typeof document !== 'undefined') init();
+</script>
+</body>
+</html>
